@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { type Workflow } from "@shared/schema";
@@ -16,15 +16,55 @@ export default function WorkflowEditor() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
 
-  const workflowQuery = useQuery<Workflow>({
+  // Query to fetch workflow data
+  const workflowQuery = useQuery({
     queryKey: ["/api/workflows/1"],
+    onSuccess: (data) => {
+      if (data) {
+        // Load workflow data from database
+        const workflowSteps = data.steps || [];
+        const workflowEdges = data.edges || [];
+
+        // Convert database format to ReactFlow format
+        setNodes(workflowSteps.map(step => ({
+          id: step.id.toString(),
+          type: step.type,
+          position: step.position,
+          data: { 
+            label: step.label,
+            config: step.config
+          }
+        })));
+
+        setEdges(workflowEdges.map(edge => ({
+          id: edge.id.toString(),
+          source: edge.sourceId.toString(),
+          target: edge.targetId.toString()
+        })));
+      }
+    }
   });
 
+  // Mutation to save workflow changes
   const saveMutation = useMutation({
     mutationFn: async () => {
+      // Convert ReactFlow format to database format
+      const steps = nodes.map(node => ({
+        type: node.type,
+        label: node.data.label,
+        position: node.position,
+        config: node.data.config || {},
+        order: parseInt(node.id.replace('node_', ''))
+      }));
+
+      const workflowEdges = edges.map(edge => ({
+        sourceId: parseInt(edge.source),
+        targetId: parseInt(edge.target)
+      }));
+
       await queryClient.apiRequest("PATCH", "/api/workflows/1", {
-        nodes,
-        edges,
+        steps,
+        edges: workflowEdges
       });
     },
     onSuccess: () => {
