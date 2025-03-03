@@ -8,12 +8,13 @@ import WorkflowCanvas from "@/components/workflow/canvas";
 import Sidebar from "@/components/workflow/sidebar";
 import { Play, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { type Node, type Edge } from "reactflow";
 
 export default function WorkflowEditor() {
   const { toast } = useToast();
   const [selectedTab, setSelectedTab] = useState("editor");
-  const [nodes, setNodes] = useState([]);
-  const [edges, setEdges] = useState([]);
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
 
   const workflowQuery = useQuery<Workflow>({
     queryKey: ["/api/workflows/1"],
@@ -78,7 +79,7 @@ export default function WorkflowEditor() {
 
       <div className="flex-1 flex">
         <Sidebar />
-        
+
         <div className="flex-1">
           <Tabs value={selectedTab} onValueChange={setSelectedTab}>
             <TabsList>
@@ -86,7 +87,7 @@ export default function WorkflowEditor() {
               <TabsTrigger value="executions">Executions</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="editor" className="h-full">
+            <TabsContent value="editor" className="h-[calc(100vh-10rem)]">
               <WorkflowCanvas
                 nodes={nodes}
                 edges={edges}

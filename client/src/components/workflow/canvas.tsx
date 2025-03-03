@@ -26,8 +26,8 @@ export default function WorkflowCanvas({
   onNodesChange,
   onEdgesChange,
 }: WorkflowCanvasProps) {
-  const [nodes, setNodes] = useState(initialNodes);
-  const [edges, setEdges] = useState(initialEdges);
+  const [nodes, setNodes] = useState<Node[]>(initialNodes);
+  const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -68,13 +68,13 @@ export default function WorkflowCanvas({
     (params: Connection) => {
       if (!params.source || !params.target) return;
 
-      const newEdge: Edge = {
+      const newEdge = {
         id: `edge_${edges.length + 1}`,
         source: params.source,
         target: params.target,
       };
 
-      const updatedEdges = [...edges, newEdge];
+      const updatedEdges = addEdge(newEdge, edges);
       setEdges(updatedEdges);
       onEdgesChange(updatedEdges);
     },
@@ -82,7 +82,7 @@ export default function WorkflowCanvas({
   );
 
   return (
-    <div className="h-full w-full">
+    <div style={{ width: '100%', height: '100%' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
