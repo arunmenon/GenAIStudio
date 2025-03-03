@@ -6,6 +6,11 @@ import {
   Repeat,
   MessageSquare,
   Webhook,
+  FileText,
+  HelpCircle,
+  Scale,
+  FileSearch,
+  Sparkles,
 } from "lucide-react";
 import {
   Accordion,
@@ -37,15 +42,45 @@ const nodeCategories = [
     items: [
       {
         type: "basic_llm_chain",
-        label: "LLM Chain",
+        label: "Basic LLM Chain",
         icon: MessageSquare,
         description: "Basic language model chain",
+      },
+      {
+        type: "information_extractor",
+        label: "Information Extractor",
+        icon: FileSearch,
+        description: "Extract structured information from text",
+      },
+      {
+        type: "qa_chain",
+        label: "Q&A Chain",
+        icon: HelpCircle,
+        description: "Answer questions about documents",
+      },
+      {
+        type: "sentiment_analysis",
+        label: "Sentiment Analysis",
+        icon: Scale,
+        description: "Analyze text sentiment",
       },
       {
         type: "ai_transform",
         label: "AI Transform",
         icon: Wand2,
         description: "Transform data using AI",
+      },
+      {
+        type: "summarization_chain",
+        label: "Summarization Chain",
+        icon: FileText,
+        description: "Create concise summaries",
+      },
+      {
+        type: "text_classifier",
+        label: "Text Classifier",
+        icon: Sparkles,
+        description: "Classify text into categories",
       },
     ],
   },
@@ -87,9 +122,9 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-64 border-r bg-muted/10 p-4">
+    <div className="w-80 border-r bg-muted/10 p-4 overflow-y-auto">
       <h2 className="font-semibold mb-4">Add Node</h2>
-      
+
       <Accordion type="single" collapsible className="w-full">
         {nodeCategories.map((category) => (
           <AccordionItem key={category.label} value={category.label}>

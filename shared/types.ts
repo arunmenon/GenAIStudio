@@ -3,7 +3,12 @@ export type NodeType =
   | "manual_trigger"
   | "webhook_trigger"
   | "basic_llm_chain"
+  | "information_extractor"
+  | "qa_chain"
+  | "sentiment_analysis"
   | "ai_transform"
+  | "summarization_chain"
+  | "text_classifier"
   | "code"
   | "loop";
 

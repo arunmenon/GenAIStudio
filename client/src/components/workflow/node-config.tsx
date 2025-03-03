@@ -36,24 +36,25 @@ const llmChainConfigSchema = z.object({
   temperature: z.number().min(0).max(1).default(0.7),
 });
 
-const aiTransformConfigSchema = z.object({
-  systemPrompt: z.string().min(1, "System prompt is required"),
-  input: z.string(),
-  maxTokens: z.number().int().min(1).max(4000).default(1000),
+const extractorConfigSchema = z.object({
+  template: z.string().min(1, "Template is required"),
+  input: z.string().min(1, "Input field is required"),
+});
+
+const qaChainConfigSchema = z.object({
+  question: z.string().min(1, "Question is required"),
+  context: z.string().min(1, "Context is required"),
+});
+
+const sentimentConfigSchema = z.object({
+  input: z.string().min(1, "Input text is required"),
+  detailed: z.boolean().default(false),
 });
 
 const codeConfigSchema = z.object({
+  language: z.enum(["javascript", "python"]),
+  mode: z.enum(["Run Once", "Run Once for All Items", "Run for Each Item"]),
   code: z.string().min(1, "Code is required"),
-});
-
-const loopConfigSchema = z.object({
-  input: z.string().min(1, "Input field is required"),
-  maxIterations: z.number().int().min(1).default(10),
-});
-
-const webhookConfigSchema = z.object({
-  method: z.enum(["GET", "POST", "PUT", "DELETE"]),
-  path: z.string().min(1, "Path is required"),
 });
 
 export default function NodeConfig({ nodeId, nodeType, config, onConfigChange }: NodeConfigProps) {
@@ -64,14 +65,14 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange }:
         return scheduleConfigSchema;
       case "basic_llm_chain":
         return llmChainConfigSchema;
-      case "ai_transform":
-        return aiTransformConfigSchema;
+      case "information_extractor":
+        return extractorConfigSchema;
+      case "qa_chain":
+        return qaChainConfigSchema;
+      case "sentiment_analysis":
+        return sentimentConfigSchema;
       case "code":
         return codeConfigSchema;
-      case "loop":
-        return loopConfigSchema;
-      case "webhook_trigger":
-        return webhookConfigSchema;
       default:
         return z.object({});
     }
@@ -79,7 +80,11 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange }:
 
   const form = useForm({
     resolver: zodResolver(getSchemaForType(nodeType)),
-    defaultValues: config,
+    defaultValues: {
+      ...config,
+      language: config.language || "javascript",
+      mode: config.mode || "Run Once",
+    },
   });
 
   useEffect(() => {
@@ -89,6 +94,64 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange }:
   const onSubmit = (data: Record<string, any>) => {
     onConfigChange(nodeId, data);
   };
+
+  const renderCodeNode = () => (
+    <>
+      <FormField
+        control={form.control}
+        name="mode"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Mode</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Run Once">Run Once</SelectItem>
+                <SelectItem value="Run Once for All Items">Run Once for All Items</SelectItem>
+                <SelectItem value="Run for Each Item">Run for Each Item</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="language"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Language</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="javascript">JavaScript</SelectItem>
+                <SelectItem value="python">Python (Beta)</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="code"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Code</FormLabel>
+            <FormControl>
+              <Textarea
+                className="font-mono h-48"
+                placeholder={`Type $ for a list of special vars/methods.\nDebug by using console.log() statements.`}
+                {...field}
+              />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+    </>
+  );
 
   const renderFields = () => {
     switch (nodeType) {
@@ -173,18 +236,17 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange }:
             />
           </>
         );
-
-      case "ai_transform":
+      case "information_extractor":
         return (
           <>
             <FormField
               control={form.control}
-              name="systemPrompt"
+              name="template"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>System Prompt</FormLabel>
+                  <FormLabel>Template</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Enter system prompt..." {...field} />
+                    <Textarea placeholder="Enter template..." {...field} />
                   </FormControl>
                 </FormItem>
               )}
@@ -203,29 +265,36 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange }:
             />
           </>
         );
-
-      case "code":
+      case "qa_chain":
         return (
-          <FormField
-            control={form.control}
-            name="code"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>JavaScript Code</FormLabel>
-                <FormControl>
-                  <Textarea
-                    className="font-mono"
-                    rows={10}
-                    placeholder="Enter your code..."
-                    {...field}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+          <>
+            <FormField
+              control={form.control}
+              name="question"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Question</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter question..." {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="context"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Context</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Enter context..." {...field} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </>
         );
-
-      case "loop":
+      case "sentiment_analysis":
         return (
           <>
             <FormField
@@ -233,66 +302,29 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange }:
               name="input"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Input Field</FormLabel>
+                  <FormLabel>Input Text</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter input field name..." {...field} />
+                    <Textarea placeholder="Enter text..." {...field} />
                   </FormControl>
                 </FormItem>
               )}
             />
             <FormField
               control={form.control}
-              name="maxIterations"
+              name="detailed"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Max Iterations</FormLabel>
+                  <FormLabel>Detailed Analysis</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </>
-        );
-
-      case "webhook_trigger":
-        return (
-          <>
-            <FormField
-              control={form.control}
-              name="method"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>HTTP Method</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="GET">GET</SelectItem>
-                      <SelectItem value="POST">POST</SelectItem>
-                      <SelectItem value="PUT">PUT</SelectItem>
-                      <SelectItem value="DELETE">DELETE</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="path"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Path</FormLabel>
-                  <FormControl>
-                    <Input placeholder="/webhook/my-endpoint" {...field} />
+                    <Input type="checkbox" {...field} />
                   </FormControl>
                 </FormItem>
               )}
             />
           </>
         );
-
+      case "code":
+        return renderCodeNode();
       default:
         return null;
     }
