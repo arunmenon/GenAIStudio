@@ -26,7 +26,7 @@ interface NodeConfigProps {
   onNextStep?: () => void;
 }
 
-// Configuration schemas for different node types
+// Define all schemas first
 const scheduleConfigSchema = z.object({
   schedule: z.string().min(1, "Schedule is required"),
   timezone: z.string().default("UTC"),
@@ -42,6 +42,20 @@ const codeConfigSchema = z.object({
   mode: z.enum(["Run Once", "Run Once for All Items", "Run for Each Item"]),
   code: z.string().min(1, "Code is required"),
 });
+
+// Helper function to get schema based on node type
+const getSchemaForType = (type: NodeType) => {
+  switch (type) {
+    case "schedule_trigger":
+      return scheduleConfigSchema;
+    case "basic_llm_chain":
+      return llmChainConfigSchema;
+    case "code":
+      return codeConfigSchema;
+    default:
+      return z.object({});
+  }
+};
 
 export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, onNextStep }: NodeConfigProps) {
   const form = useForm({
@@ -59,20 +73,6 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, o
 
   const onSubmit = (data: Record<string, any>) => {
     onConfigChange(nodeId, data);
-  };
-
-  // Select schema based on node type
-  const getSchemaForType = (type: NodeType) => {
-    switch (type) {
-      case "schedule_trigger":
-        return scheduleConfigSchema;
-      case "basic_llm_chain":
-        return llmChainConfigSchema;
-      case "code":
-        return codeConfigSchema;
-      default:
-        return z.object({});
-    }
   };
 
   const renderScheduleTrigger = () => (
