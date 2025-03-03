@@ -62,7 +62,10 @@ export default function WorkflowEditor() {
         targetId: parseInt(edge.target)
       }));
 
+      console.log('Saving workflow with steps:', steps); // Debug log
+
       await queryClient.apiRequest("PATCH", "/api/workflows/1", {
+        name: "My Workflow", // Add a default name if not exists
         steps,
         edges: workflowEdges
       });
@@ -74,6 +77,14 @@ export default function WorkflowEditor() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/workflows/1"] });
     },
+    onError: (error) => {
+      console.error('Error saving workflow:', error);
+      toast({
+        title: "Error saving workflow",
+        description: "There was a problem saving your changes.",
+        variant: "destructive",
+      });
+    }
   });
 
   const executeMutation = useMutation({

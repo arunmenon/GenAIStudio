@@ -98,10 +98,16 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, o
   }, [config, form]);
 
   const onSubmit = (data: Record<string, any>) => {
+    console.log('Submitting node config:', data); // Debug log
+
     if (nodeType === "schedule_trigger") {
       // Convert the natural schedule to cron expression
       const cronExpression = convertToCron(data);
-      onConfigChange(nodeId, { ...data, schedule: cronExpression });
+      onConfigChange(nodeId, { 
+        ...data, 
+        schedule: cronExpression,
+        type: 'schedule_trigger' 
+      });
     } else {
       onConfigChange(nodeId, data);
     }
