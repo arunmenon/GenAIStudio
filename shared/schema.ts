@@ -19,9 +19,9 @@ export const workflowSteps = pgTable("workflow_steps", {
   workflowId: integer("workflow_id")
     .notNull()
     .references(() => workflows.id, { onDelete: "cascade" }),
-  type: text("type", { enum: ["schedule_trigger", "manual_trigger", "webhook_trigger", "basic_llm_chain", 
-    "information_extractor", "qa_chain", "sentiment_analysis", "ai_transform", 
-    "summarization_chain", "text_classifier", "code", "loop"] }).notNull(),
+  type: text("type", { enum: ["schedule_trigger", "manual_trigger", "webhook_trigger", "app_event_trigger", "workflow_trigger", 
+    "basic_llm_chain", "information_extractor", "qa_chain", "sentiment_analysis", "ai_transform", 
+    "summarization_chain", "text_classifier", "code", "loop", "condition", "switch", "merge", "filter"] }).notNull(),
   label: text("label").notNull(),
   position: jsonb("position").notNull(), // {x: number, y: number}
   config: jsonb("config").notNull().default({}), // Store node-specific configuration
@@ -40,6 +40,9 @@ export const workflowEdges = pgTable("workflow_edges", {
   targetId: integer("target_id")
     .notNull()
     .references(() => workflowSteps.id),
+  label: text("label"),  // For condition branches like "true", "false", "case1", etc.
+  sourceHandle: text("source_handle"), // For tracking which output handle from the source
+  targetHandle: text("target_handle"), // For tracking which input handle on the target
 });
 
 // Track workflow executions
@@ -77,6 +80,10 @@ export const insertWorkflowSchema = createInsertSchema(workflows).omit({
   id: true,
   createdAt: true,
   updatedAt: true 
+}).extend({
+  // Add optional steps and edges for client to send
+  steps: z.array(z.any()).optional(),
+  edges: z.array(z.any()).optional()
 });
 
 export const insertWorkflowStepSchema = createInsertSchema(workflowSteps).omit({ 
@@ -99,16 +106,25 @@ export const insertStepExecutionSchema = createInsertSchema(stepExecutions).omit
 export type Workflow = typeof workflows.$inferSelect;
 export type InsertWorkflow = z.infer<typeof insertWorkflowSchema>;
 
-export type WorkflowStep = typeof workflowSteps.$inferSelect;
+export type WorkflowStep = typeof workflowSteps.$inferSelect & {
+  config: Record<string, any>;
+};
 export type InsertWorkflowStep = z.infer<typeof insertWorkflowStepSchema>;
 
-export type WorkflowEdge = typeof workflowEdges.$inferSelect;
+export type WorkflowEdge = typeof workflowEdges.$inferSelect & {
+  label?: string | null;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+};
 export type InsertWorkflowEdge = z.infer<typeof insertWorkflowEdgeSchema>;
 
 export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
 export type InsertWorkflowExecution = z.infer<typeof insertWorkflowExecutionSchema>;
 
-export type StepExecution = typeof stepExecutions.$inferSelect;
+export type StepExecution = typeof stepExecutions.$inferSelect & {
+  input: Record<string, any>;
+  output: Record<string, any>;
+};
 export type InsertStepExecution = z.infer<typeof insertStepExecutionSchema>;
 
 export const credentials = pgTable("credentials", {

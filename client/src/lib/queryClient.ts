@@ -11,7 +11,7 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
-): Promise<Response> {
+): Promise<any> {
   const res = await fetch(url, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
@@ -20,7 +20,7 @@ export async function apiRequest(
   });
 
   await throwIfResNotOk(res);
-  return res;
+  return res.json().catch(() => res);
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -41,7 +41,8 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
-export const queryClient = new QueryClient({
+// Add apiRequest to queryClient
+const queryClientWithApi = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
@@ -55,3 +56,9 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Add apiRequest to the query client instance
+Object.assign(queryClientWithApi, { apiRequest });
+
+// Export the enhanced query client
+export const queryClient = queryClientWithApi;

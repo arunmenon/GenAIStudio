@@ -2,6 +2,8 @@ export type NodeType =
   | "schedule_trigger"
   | "manual_trigger"
   | "webhook_trigger"
+  | "app_event_trigger"
+  | "workflow_trigger"
   | "basic_llm_chain"
   | "information_extractor"
   | "qa_chain"
@@ -10,9 +12,13 @@ export type NodeType =
   | "summarization_chain"
   | "text_classifier"
   | "code"
-  | "loop";
+  | "loop"
+  | "condition"
+  | "switch"
+  | "merge"
+  | "filter";
 
-export type TriggerType = "manual" | "schedule" | "webhook";
+export type TriggerType = "manual" | "schedule" | "webhook" | "app_event" | "workflow";
 
 export interface WorkflowNode {
   id: string;
@@ -28,6 +34,9 @@ export interface WorkflowEdge {
   id: string;
   source: string;
   target: string;
+  label?: string;
+  sourceHandle?: string;
+  targetHandle?: string;
 }
 
 export interface NodeTypeInfo {

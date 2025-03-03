@@ -1,0 +1,13 @@
+{
+  "name": "genai-studio-tests",
+  "version": "1.0.0",
+  "description": "Test suite for GenAIStudio features",
+  "type": "module",
+  "scripts": {
+    "test": "node feature-tests.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "crypto": "^1.0.1"
+  }
+}

@@ -1,5 +1,5 @@
 // Last modified: 2025-03-03 11:30:00
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,10 +14,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { type NodeType } from "@shared/types";
+import { useToast } from "@/hooks/use-toast";
 
 interface NodeConfigProps {
   nodeId: string;
@@ -81,6 +82,10 @@ const convertToCron = (data: any): string => {
 };
 
 export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, onNextStep }: NodeConfigProps) {
+  const { toast } = useToast();
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isConfigValid, setIsConfigValid] = useState<boolean>(false);
+  
   const form = useForm({
     resolver: zodResolver(getSchemaForType(nodeType)),
     defaultValues: {
@@ -92,25 +97,66 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, o
     },
   });
 
+  // Check if we have existing config
+  const hasExistingConfig = config && Object.keys(config).length > 0;
+
   useEffect(() => {
     console.log('Loading config:', config);
-    if (config && Object.keys(config).length > 0) {
+    if (hasExistingConfig) {
       form.reset(config);
+      setIsConfigValid(true);
     }
-  }, [config, form]);
+  }, [config, form, hasExistingConfig]);
+  
+  // Validate form whenever values change
+  useEffect(() => {
+    const subscription = form.watch(() => {
+      form.trigger().then(isValid => {
+        setIsConfigValid(isValid);
+      });
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   const onSubmit = (data: Record<string, any>) => {
-    console.log('Submitting schedule config:', data);
+    console.log('Submitting config:', nodeId, nodeType, data);
+    setSaveStatus('saving');
 
-    if (nodeType === "schedule_trigger") {
-      // Convert the natural schedule to cron expression
-      const cronExpression = convertToCron(data);
-      onConfigChange(nodeId, {
-        ...data,
-        schedule: cronExpression,
+    try {
+      // Process specific node types
+      let processedData = data;
+      
+      if (nodeType === "schedule_trigger") {
+        // Convert the natural schedule to cron expression
+        const cronExpression = convertToCron(data);
+        processedData = {
+          ...data,
+          schedule: cronExpression
+        };
+        console.log('Schedule config with cron:', processedData);
+      }
+      
+      // Save the configuration
+      onConfigChange(nodeId, processedData);
+      
+      // Update status and show toast
+      setSaveStatus('saved');
+      toast({
+        title: "Configuration saved",
+        description: `The ${nodeType} configuration has been saved successfully.`,
       });
-    } else {
-      onConfigChange(nodeId, data);
+      
+      // Reset status after delay
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (error) {
+      console.error('Error saving config:', error);
+      setSaveStatus('error');
+      toast({
+        title: "Error saving configuration",
+        description: "There was a problem saving your configuration.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -343,21 +389,60 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, o
   return (
     <Card className="w-96">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Node Configuration</CardTitle>
-        {onNextStep && (
-          <Button variant="ghost" size="sm" onClick={onNextStep}>
-            Next Step <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
-        )}
+        <div>
+          <CardTitle>Node Configuration</CardTitle>
+          <CardDescription>
+            Configure this {nodeType.replace(/_/g, ' ')} node
+          </CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {renderFields()}
-            <Button type="submit" className="w-full">Save Configuration</Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                type="submit" 
+                className="flex-1"
+                disabled={saveStatus === 'saving'}
+              >
+                {saveStatus === 'saving' ? 'Saving...' : 'Save Configuration'}
+                {saveStatus === 'saved' && <CheckCircle2 className="ml-2 h-4 w-4 text-green-500" />}
+                {saveStatus === 'error' && <AlertTriangle className="ml-2 h-4 w-4 text-red-500" />}
+              </Button>
+              
+              {isConfigValid && onNextStep && (
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={onNextStep}
+                >
+                  Next <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </form>
         </Form>
       </CardContent>
+      <CardFooter className="border-t pt-4">
+        <div className="w-full flex justify-between items-center">
+          <div className="text-sm text-muted-foreground">
+            {hasExistingConfig ? (
+              <span className="flex items-center">
+                <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                Configuration is valid
+              </span>
+            ) : (
+              <span>Configure this node to continue</span>
+            )}
+          </div>
+          {isConfigValid && !onNextStep && (
+            <Button size="sm" variant="outline" className="text-green-600" disabled>
+              Terminal Node
+            </Button>
+          )}
+        </div>
+      </CardFooter>
     </Card>
   );
 }
