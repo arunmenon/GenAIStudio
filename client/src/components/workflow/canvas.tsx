@@ -30,7 +30,7 @@ export default function WorkflowCanvas({
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [showConfig, setShowConfig] = useState(false);
+  const [showNodeConfig, setShowNodeConfig] = useState(true);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -62,6 +62,10 @@ export default function WorkflowCanvas({
       const updatedNodes = [...nodes, newNode];
       setNodes(updatedNodes);
       onNodesChange(updatedNodes);
+
+      // Automatically select the newly created node
+      setSelectedNode(newNode);
+      setShowNodeConfig(true);
     },
     [nodes, onNodesChange]
   );
@@ -85,25 +89,21 @@ export default function WorkflowCanvas({
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
-    setShowConfig(true);
+    setShowNodeConfig(true);
   }, []);
 
-  const onConfigChange = useCallback((nodeId: string, config: Record<string, any>) => {
-    const updatedNodes = nodes.map(node => {
-      if (node.id === nodeId) {
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            config,
-          },
-        };
-      }
-      return node;
-    });
-    setNodes(updatedNodes);
-    onNodesChange(updatedNodes);
-  }, [nodes, onNodesChange]);
+  const onConfigChange = useCallback(
+    (nodeId: string, config: Record<string, any>) => {
+      const updatedNodes = nodes.map((node) =>
+        node.id === nodeId
+          ? { ...node, data: { ...node.data, config } }
+          : node
+      );
+      setNodes(updatedNodes);
+      onNodesChange(updatedNodes);
+    },
+    [nodes, onNodesChange]
+  );
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -145,46 +145,53 @@ export default function WorkflowCanvas({
       >
         <Background />
         <Controls />
-        {selectedNode && showConfig && (
+        {selectedNode && (
           <Panel position="top-right" className="bg-background rounded-lg shadow-lg">
-            <NodeConfig
-              nodeId={selectedNode.id}
-              nodeType={selectedNode.type as NodeType}
-              config={selectedNode.data.config || {}}
-              onConfigChange={onConfigChange}
-            />
-          </Panel>
-        )}
-        {selectedNode && !showConfig && (
-          <Panel position="top-right" className="bg-background rounded-lg shadow-lg">
-            <NextStepPanel 
-              onAddNode={(type: string) => {
-                const newNode: Node = {
-                  id: `node_${nodes.length + 1}`,
-                  type: type as NodeType,
-                  position: {
-                    x: selectedNode.position.x + 200,
-                    y: selectedNode.position.y,
-                  },
-                  data: { label: type, config: {} },
-                };
+            {showNodeConfig ? (
+              <NodeConfig
+                nodeId={selectedNode.id}
+                nodeType={selectedNode.type as NodeType}
+                config={selectedNode.data.config || {}}
+                onConfigChange={onConfigChange}
+                onNextStep={() => setShowNodeConfig(false)}
+              />
+            ) : (
+              <NextStepPanel
+                onAddNode={(type: string) => {
+                  const newNode: Node = {
+                    id: `node_${nodes.length + 1}`,
+                    type: type as NodeType,
+                    position: {
+                      x: selectedNode.position.x + 200,
+                      y: selectedNode.position.y,
+                    },
+                    data: { label: type, config: {} },
+                  };
 
-                const updatedNodes = [...nodes, newNode];
-                setNodes(updatedNodes);
-                onNodesChange(updatedNodes);
+                  const updatedNodes = [...nodes, newNode];
+                  setNodes(updatedNodes);
+                  onNodesChange(updatedNodes);
 
-                const newEdge: Edge = {
-                  id: `edge_${edges.length + 1}`,
-                  source: selectedNode.id,
-                  target: newNode.id,
-                };
+                  const newEdge: Edge = {
+                    id: `edge_${edges.length + 1}`,
+                    source: selectedNode.id,
+                    target: newNode.id,
+                  };
 
-                const updatedEdges = [...edges, newEdge];
-                setEdges(updatedEdges);
-                onEdgesChange(updatedEdges);
-              }}
-              onClose={() => setSelectedNode(null)}
-            />
+                  const updatedEdges = addEdge(newEdge, edges);
+                  setEdges(updatedEdges);
+                  onEdgesChange(updatedEdges);
+
+                  // Select the newly created node
+                  setSelectedNode(newNode);
+                  setShowNodeConfig(true);
+                }}
+                onClose={() => {
+                  setSelectedNode(null);
+                  setShowNodeConfig(true);
+                }}
+              />
+            )}
           </Panel>
         )}
       </ReactFlow>
