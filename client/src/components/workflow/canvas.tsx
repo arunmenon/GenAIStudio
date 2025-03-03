@@ -7,8 +7,6 @@ import ReactFlow, {
   Panel,
   addEdge,
   Connection,
-  useEdgesState,
-  useNodesState,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { nodeTypes } from "./node-types";
@@ -53,27 +51,32 @@ export default function WorkflowCanvas({
       };
 
       const newNode: Node = {
-        id: `n${nodes.length + 1}`,
+        id: `node_${nodes.length + 1}`,
         type: type as NodeType,
         position,
         data: { label },
       };
 
-      setNodes((nds) => [...nds, newNode]);
-      onNodesChange([...nodes, newNode]);
+      const updatedNodes = [...nodes, newNode];
+      setNodes(updatedNodes);
+      onNodesChange(updatedNodes);
     },
     [nodes, onNodesChange]
   );
 
   const onConnect = useCallback(
     (params: Connection) => {
+      if (!params.source || !params.target) return;
+
       const newEdge: Edge = {
-        id: `e${edges.length + 1}`,
-        source: params.source!,
-        target: params.target!,
+        id: `edge_${edges.length + 1}`,
+        source: params.source,
+        target: params.target,
       };
-      setEdges((eds) => [...eds, newEdge]);
-      onEdgesChange([...edges, newEdge]);
+
+      const updatedEdges = [...edges, newEdge];
+      setEdges(updatedEdges);
+      onEdgesChange(updatedEdges);
     },
     [edges, onEdgesChange]
   );
@@ -123,7 +126,7 @@ export default function WorkflowCanvas({
             <NextStepPanel 
               onAddNode={(type: string) => {
                 const newNode: Node = {
-                  id: `n${nodes.length + 1}`,
+                  id: `node_${nodes.length + 1}`,
                   type: type as NodeType,
                   position: {
                     x: selectedNode.position.x + 200,
@@ -131,16 +134,20 @@ export default function WorkflowCanvas({
                   },
                   data: { label: type },
                 };
-                setNodes((nds) => [...nds, newNode]);
-                onNodesChange([...nodes, newNode]);
+
+                const updatedNodes = [...nodes, newNode];
+                setNodes(updatedNodes);
+                onNodesChange(updatedNodes);
 
                 const newEdge: Edge = {
-                  id: `e${edges.length + 1}`,
+                  id: `edge_${edges.length + 1}`,
                   source: selectedNode.id,
                   target: newNode.id,
                 };
-                setEdges((eds) => [...eds, newEdge]);
-                onEdgesChange([...edges, newEdge]);
+
+                const updatedEdges = [...edges, newEdge];
+                setEdges(updatedEdges);
+                onEdgesChange(updatedEdges);
               }}
               onClose={() => setSelectedNode(null)}
             />

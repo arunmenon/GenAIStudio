@@ -1,6 +1,5 @@
-import { useDrag } from "react-use-gesture";
 import {
-  Clock,
+  Bot,
   Code,
   Wand2,
   Repeat,
@@ -18,19 +17,20 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { type NodeType } from "@shared/types";
 
 const nodeCategories = [
   {
     label: "Triggers",
     items: [
       {
-        type: "schedule_trigger",
+        type: "schedule_trigger" as NodeType,
         label: "Schedule",
-        icon: Clock,
+        icon: Webhook,
         description: "Runs the flow on a schedule",
       },
       {
-        type: "webhook_trigger",
+        type: "webhook_trigger" as NodeType,
         label: "Webhook",
         icon: Webhook,
         description: "Triggers on HTTP request",
@@ -41,43 +41,43 @@ const nodeCategories = [
     label: "AI",
     items: [
       {
-        type: "basic_llm_chain",
+        type: "basic_llm_chain" as NodeType,
         label: "Basic LLM Chain",
         icon: MessageSquare,
         description: "Basic language model chain",
       },
       {
-        type: "information_extractor",
+        type: "information_extractor" as NodeType,
         label: "Information Extractor",
         icon: FileSearch,
         description: "Extract structured information from text",
       },
       {
-        type: "qa_chain",
+        type: "qa_chain" as NodeType,
         label: "Q&A Chain",
         icon: HelpCircle,
         description: "Answer questions about documents",
       },
       {
-        type: "sentiment_analysis",
+        type: "sentiment_analysis" as NodeType,
         label: "Sentiment Analysis",
         icon: Scale,
         description: "Analyze text sentiment",
       },
       {
-        type: "ai_transform",
+        type: "ai_transform" as NodeType,
         label: "AI Transform",
         icon: Wand2,
         description: "Transform data using AI",
       },
       {
-        type: "summarization_chain",
+        type: "summarization_chain" as NodeType,
         label: "Summarization Chain",
         icon: FileText,
         description: "Create concise summaries",
       },
       {
-        type: "text_classifier",
+        type: "text_classifier" as NodeType,
         label: "Text Classifier",
         icon: Sparkles,
         description: "Classify text into categories",
@@ -88,7 +88,7 @@ const nodeCategories = [
     label: "Flow",
     items: [
       {
-        type: "loop",
+        type: "loop" as NodeType,
         label: "Loop",
         icon: Repeat,
         description: "Iterate over items",
@@ -99,7 +99,7 @@ const nodeCategories = [
     label: "Code",
     items: [
       {
-        type: "code",
+        type: "code" as NodeType,
         label: "JavaScript",
         icon: Code,
         description: "Run custom JavaScript code",
@@ -110,14 +110,16 @@ const nodeCategories = [
 
 export default function Sidebar() {
   const onDragStart = (
-    event: React.DragEvent,
+    event: React.DragEvent<HTMLDivElement>,
     nodeType: string,
-    label: string
+    nodeLabel: string
   ) => {
-    event.dataTransfer.setData(
-      "application/reactflow",
-      JSON.stringify({ type: nodeType, label })
-    );
+    // Set the drag data
+    const data = {
+      type: nodeType,
+      label: nodeLabel,
+    };
+    event.dataTransfer.setData("application/reactflow", JSON.stringify(data));
     event.dataTransfer.effectAllowed = "move";
   };
 
