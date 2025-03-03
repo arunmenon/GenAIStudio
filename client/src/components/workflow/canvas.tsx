@@ -12,6 +12,7 @@ import "reactflow/dist/style.css";
 import { nodeTypes } from "./node-types";
 import { NextStepPanel } from "./next-step-panel";
 import { type NodeType } from "@shared/types";
+import NodeConfig from "./node-config";
 
 interface WorkflowCanvasProps {
   nodes: Node[];
@@ -29,6 +30,7 @@ export default function WorkflowCanvas({
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [showConfig, setShowConfig] = useState(false);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -54,7 +56,7 @@ export default function WorkflowCanvas({
         id: `node_${nodes.length + 1}`,
         type: type as NodeType,
         position,
-        data: { label },
+        data: { label, config: {} },
       };
 
       const updatedNodes = [...nodes, newNode];
@@ -81,8 +83,30 @@ export default function WorkflowCanvas({
     [edges, onEdgesChange]
   );
 
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node);
+    setShowConfig(true);
+  }, []);
+
+  const onConfigChange = useCallback((nodeId: string, config: Record<string, any>) => {
+    const updatedNodes = nodes.map(node => {
+      if (node.id === nodeId) {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            config,
+          },
+        };
+      }
+      return node;
+    });
+    setNodes(updatedNodes);
+    onNodesChange(updatedNodes);
+  }, [nodes, onNodesChange]);
+
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -113,7 +137,7 @@ export default function WorkflowCanvas({
           onEdgesChange(updatedEdges);
         }}
         onConnect={onConnect}
-        onNodeClick={(_, node) => setSelectedNode(node)}
+        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         onDragOver={onDragOver}
         onDrop={onDrop}
@@ -121,8 +145,18 @@ export default function WorkflowCanvas({
       >
         <Background />
         <Controls />
-        {selectedNode && (
-          <Panel position="top-right" className="bg-white rounded-lg shadow-lg">
+        {selectedNode && showConfig && (
+          <Panel position="top-right" className="bg-background rounded-lg shadow-lg">
+            <NodeConfig
+              nodeId={selectedNode.id}
+              nodeType={selectedNode.type as NodeType}
+              config={selectedNode.data.config || {}}
+              onConfigChange={onConfigChange}
+            />
+          </Panel>
+        )}
+        {selectedNode && !showConfig && (
+          <Panel position="top-right" className="bg-background rounded-lg shadow-lg">
             <NextStepPanel 
               onAddNode={(type: string) => {
                 const newNode: Node = {
@@ -132,7 +166,7 @@ export default function WorkflowCanvas({
                     x: selectedNode.position.x + 200,
                     y: selectedNode.position.y,
                   },
-                  data: { label: type },
+                  data: { label: type, config: {} },
                 };
 
                 const updatedNodes = [...nodes, newNode];
