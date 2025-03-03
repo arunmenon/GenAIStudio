@@ -28,7 +28,11 @@ interface NodeConfigProps {
 
 // Define all schemas first
 const scheduleConfigSchema = z.object({
-  schedule: z.string().min(1, "Schedule is required"),
+  frequency: z.enum(["daily", "weekly", "monthly"]),
+  hour: z.string(),
+  minute: z.string(),
+  dayOfWeek: z.string().optional(),
+  dayOfMonth: z.string().optional(),
   timezone: z.string().default("UTC"),
 });
 
@@ -57,11 +61,33 @@ const getSchemaForType = (type: NodeType) => {
   }
 };
 
+// Helper to convert the natural schedule to cron expression
+const convertToCron = (data: any): string => {
+  const { frequency, hour, minute, dayOfWeek, dayOfMonth } = data;
+  const h = hour.padStart(2, '0');
+  const m = minute.padStart(2, '0');
+
+  switch (frequency) {
+    case "daily":
+      return `${m} ${h} * * *`;
+    case "weekly":
+      return `${m} ${h} * * ${dayOfWeek}`;
+    case "monthly":
+      return `${m} ${h} ${dayOfMonth} * *`;
+    default:
+      return "0 0 * * *";
+  }
+};
+
 export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, onNextStep }: NodeConfigProps) {
   const form = useForm({
     resolver: zodResolver(getSchemaForType(nodeType)),
     defaultValues: {
       ...config,
+      frequency: config.frequency || "daily",
+      hour: config.hour || "0",
+      minute: config.minute || "0",
+      timezone: config.timezone || "UTC",
       language: config.language || "javascript",
       mode: config.mode || "Run Once",
     },
@@ -72,26 +98,133 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, o
   }, [config, form]);
 
   const onSubmit = (data: Record<string, any>) => {
-    onConfigChange(nodeId, data);
+    if (nodeType === "schedule_trigger") {
+      // Convert the natural schedule to cron expression
+      const cronExpression = convertToCron(data);
+      onConfigChange(nodeId, { ...data, schedule: cronExpression });
+    } else {
+      onConfigChange(nodeId, data);
+    }
   };
 
   const renderScheduleTrigger = () => (
     <>
       <FormField
         control={form.control}
-        name="schedule"
+        name="frequency"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Schedule (Cron Expression)</FormLabel>
-            <FormControl>
-              <Input placeholder="*/5 * * * *" {...field} />
-            </FormControl>
-            <FormDescription>
-              Enter a cron expression (e.g. "*/5 * * * *" for every 5 minutes)
-            </FormDescription>
+            <FormLabel>Frequency</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
           </FormItem>
         )}
       />
+
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name="hour"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Hour (0-23)</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select hour" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <SelectItem key={i} value={i.toString()}>
+                      {i.toString().padStart(2, '0')}:00
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="minute"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Minute (0-59)</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select minute" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 60 }, (_, i) => (
+                    <SelectItem key={i} value={i.toString()}>
+                      {i.toString().padStart(2, '0')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {form.watch("frequency") === "weekly" && (
+        <FormField
+          control={form.control}
+          name="dayOfWeek"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Day of Week</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select day" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Sunday</SelectItem>
+                  <SelectItem value="1">Monday</SelectItem>
+                  <SelectItem value="2">Tuesday</SelectItem>
+                  <SelectItem value="3">Wednesday</SelectItem>
+                  <SelectItem value="4">Thursday</SelectItem>
+                  <SelectItem value="5">Friday</SelectItem>
+                  <SelectItem value="6">Saturday</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormItem>
+          )}
+        />
+      )}
+
+      {form.watch("frequency") === "monthly" && (
+        <FormField
+          control={form.control}
+          name="dayOfMonth"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Day of Month</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select day" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 31 }, (_, i) => (
+                    <SelectItem key={i} value={(i + 1).toString()}>
+                      {i + 1}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormItem>
+          )}
+        />
+      )}
+
       <FormField
         control={form.control}
         name="timezone"
