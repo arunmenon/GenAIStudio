@@ -83,30 +83,30 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, o
   const form = useForm({
     resolver: zodResolver(getSchemaForType(nodeType)),
     defaultValues: {
-      ...config,
-      frequency: config.frequency || "daily",
-      hour: config.hour || "0",
-      minute: config.minute || "0",
-      timezone: config.timezone || "UTC",
-      language: config.language || "javascript",
-      mode: config.mode || "Run Once",
+      frequency: "daily",
+      hour: "0",
+      minute: "0",
+      timezone: "UTC",
+      ...(config || {}),
     },
   });
 
   useEffect(() => {
-    form.reset(config);
+    console.log('Loading config:', config);
+    if (config && Object.keys(config).length > 0) {
+      form.reset(config);
+    }
   }, [config, form]);
 
   const onSubmit = (data: Record<string, any>) => {
-    console.log('Submitting node config:', data); // Debug log
+    console.log('Submitting schedule config:', data);
 
     if (nodeType === "schedule_trigger") {
       // Convert the natural schedule to cron expression
       const cronExpression = convertToCron(data);
-      onConfigChange(nodeId, { 
-        ...data, 
+      onConfigChange(nodeId, {
+        ...data,
         schedule: cronExpression,
-        type: 'schedule_trigger' 
       });
     } else {
       onConfigChange(nodeId, data);
@@ -188,7 +188,7 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, o
           render={({ field }) => (
             <FormItem>
               <FormLabel>Day of Week</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value || "1"}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select day" />
                 </SelectTrigger>
@@ -214,7 +214,7 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, o
           render={({ field }) => (
             <FormItem>
               <FormLabel>Day of Month</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value || "1"}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select day" />
                 </SelectTrigger>
@@ -311,6 +311,21 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, o
     </>
   );
 
+  const renderLLMChainNode = () => (
+    <FormField
+      control={form.control}
+      name="prompt"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Prompt</FormLabel>
+          <FormControl>
+            <Textarea placeholder="Enter your prompt..." {...field} />
+          </FormControl>
+        </FormItem>
+      )}
+    />
+  );
+
   const renderFields = () => {
     switch (nodeType) {
       case "schedule_trigger":
@@ -318,20 +333,7 @@ export default function NodeConfig({ nodeId, nodeType, config, onConfigChange, o
       case "code":
         return renderCodeNode();
       case "basic_llm_chain":
-        return (
-          <FormField
-            control={form.control}
-            name="prompt"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Prompt</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="Enter your prompt..." {...field} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        );
+        return renderLLMChainNode();
       default:
         return null;
     }
